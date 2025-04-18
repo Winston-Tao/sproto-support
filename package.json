@@ -1,0 +1,59 @@
+{
+    "name": "sproto-extend",
+    "displayName": "Sproto extend",
+    "description": "Sproto extend for vscode (.sproto file syntax highlighting, defaultFormatter, etc.)",
+    "version": "0.0.1",
+    "publisher": "winstorm",
+    "engines": {
+        "vscode": "^1.5.0"
+    },
+    "categories": [
+        "Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "sproto",
+                "aliases": [
+                    "Sproto",
+                    "sproto"
+                ],
+                "extensions": [
+                    "sproto"
+                ],
+                "configuration": "./sproto.configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "sproto",
+                "scopeName": "source.sproto",
+                "path": "./syntaxes/sproto.tmLanguage.json"
+            }
+        ]
+    },
+    "devDependencies": {
+        "@types/node": "^22.14.1",
+        "typescript": "^5.8.3",
+        "vscode": "*"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1",
+        "vscode-languageserver": "^9.0.1",
+        "vscode-languageserver-textdocument": "^1.0.12"
+    },
+    "main": "./dist/client/extension.js",
+    "activationEvents": [
+        "onLanguage:sproto"
+    ],
+    "scripts": {
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
+        "vscode:prepublish": "npm run compile"
+    },
+    "configurationDefaults": {
+        "[sproto]": {
+            "editor.defaultFormatter": "winstorm.sproto-extend"
+        }
+    }
+}

@@ -1,0 +1,1 @@
+{"root":["./client/extension.ts","./server/formatter.ts","./server/index.ts","./server/parse.ts"],"errors":true,"version":"5.8.3"}

@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "composite": true,
+        "outDir": "../dist/client",
+        "rootDir": ".",
+        "module": "commonjs",
+        "target": "es2019",
+        "lib": [
+            "es2019"
+        ],
+        "strict": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "skipLibCheck": true
+    },
+    "include": [
+        "extension.ts"
+    ]
+}
