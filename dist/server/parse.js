@@ -4,7 +4,12 @@ exports.parse = parse;
 const reType = /^\s*\.(\w[\w\d_.]*)\s*\{$/;
 const reRpc = /^\s*(\w[\w\d_]*)\s+(\d+)\s*\{$/;
 const reSess = /^\s*(request|response)\s*(\{)?/; // “request {” / “response {”
-const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)/;
+/**
+ * 字段正则：
+ * name tag : *?TypeName (key|decimal)?
+ *            └─4──┘  └────5────┘ └6┘
+ */
+const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?/;
 function parse(text) {
     const ast = [];
     const symbols = new Map();
@@ -16,9 +21,9 @@ function parse(text) {
         var _a, _b;
         const start = offset;
         const end = offset + line.length;
-        const newlineLen = text[end] === '\r' && text[end + 1] === '\n' ? 2 : 1;
-        offset = end + newlineLen;
-        // ---- .Type ---------------------------------------------------------------
+        const nlLen = text[end] === '\r' && text[end + 1] === '\n' ? 2 : 1;
+        offset = end + nlLen;
+        // ---- .Type ----------------------------------------------------------
         const mType = line.match(reType);
         if (mType) {
             const [, name] = mType;
@@ -27,7 +32,7 @@ function parse(text) {
             push(n);
             return;
         }
-        // ---- RPC -----------------------------------------------------------------
+        // ---- RPC ------------------------------------------------------------
         const mRpc = line.match(reRpc);
         if (mRpc) {
             const [, name, idStr] = mRpc;
@@ -41,15 +46,15 @@ function parse(text) {
             push(n);
             return;
         }
-        // ---- request / response --------------------------------------------------
+        // ---- request / response --------------------------------------------
         const mSess = line.match(reSess);
         if (mSess) {
             const [, which, brace] = mSess;
-            if (brace === '{') { // 内联块
+            if (brace === '{') { // 内联
                 const n = { kind: 'session', name: which, range: [start, end], children: [] };
                 push(n);
             }
-            else { // 简写：request MyReq
+            else { // 简写
                 ((_b = (_a = stack.at(-1)) === null || _a === void 0 ? void 0 : _a.children) !== null && _b !== void 0 ? _b : ast).push({
                     kind: 'session',
                     name: which,
@@ -59,10 +64,10 @@ function parse(text) {
             }
             return;
         }
-        // ---- 字段 ----------------------------------------------------------------
+        // ---- 字段 -----------------------------------------------------------
         const mField = line.match(reField);
         if (mField) {
-            const [, fname, tagStr, star, vtype] = mField;
+            const [, fname, tagStr, star, vtype, extra] = mField;
             const cur = stack.at(-1);
             if (!cur) {
                 errors.push({ message: '字段必须放在结构体 / request / response 内', range: [start, end] });
@@ -76,10 +81,16 @@ function parse(text) {
                 isArray: star === '*',
                 range: [start, end],
             };
+            if (extra !== undefined) {
+                if (vtype === 'integer')
+                    field.decimal = extra;
+                else
+                    field.key = extra; // map 主键
+            }
             cur.children.push(field);
             return;
         }
-        // ---- 右括号收栈 -----------------------------------------------------------
+        // ---- 右括号收栈 ------------------------------------------------------
         if (/\}/.test(line))
             stack.pop();
     });

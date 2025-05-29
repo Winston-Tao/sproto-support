@@ -10,6 +10,10 @@ export interface FieldNode extends Node {
     kind: 'field';
     valueType: string;
     isArray: boolean;
+    /** map 主键，如 (id) */
+    key?: string;
+    /** integer(2) 里的 (2) */
+    decimal?: string;
 }
 export interface ParseResult {
     ast: Node[];
