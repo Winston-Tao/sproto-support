@@ -18,7 +18,8 @@ function fmtFields(fields, baseIndent = 2) {
             extra = `(${f.key})`;
         if (f.decimal)
             extra = `(${f.decimal})`;
-        return `${IND(baseIndent)}${f.name.padEnd(maxName)} ${String(f.tag).padEnd(maxTag)} : ${typeStr}${extra}`;
+        const commentStr = f.comment ? `  # ${f.comment}` : '';
+        return `${IND(baseIndent)}${f.name.padEnd(maxName)} ${String(f.tag).padEnd(maxTag)} : ${typeStr}${extra}${commentStr}`;
     }).join('\n');
 }
 // ───────── 递归打印 .Type ──────────────────────────────────────────

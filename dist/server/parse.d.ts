@@ -14,6 +14,8 @@ export interface FieldNode extends Node {
     key?: string;
     /** integer(2) 里的 (2) */
     decimal?: string;
+    /** 行尾 # 注释文本（不含 #） */
+    comment?: string;
 }
 export interface ParseResult {
     ast: Node[];

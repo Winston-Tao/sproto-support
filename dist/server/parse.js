@@ -4,12 +4,8 @@ exports.parse = parse;
 const reType = /^\s*\.(\w[\w\d_.]*)\s*\{$/;
 const reRpc = /^\s*(\w[\w\d_]*)\s+(\d+)\s*\{$/;
 const reSess = /^\s*(request|response)\s*(\{)?/; // “request {” / “response {”
-/**
- * 字段正则：
- * name tag : *?TypeName (key|decimal)?
- *            └─4──┘  └────5────┘ └6┘
- */
-const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?/;
+//           ┌──5──┐ ┌───6───┐      ┌─────7 (comment)────┐
+const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?(?:\s*#\s*(.*))?/;
 function parse(text) {
     const ast = [];
     const symbols = new Map();
@@ -67,7 +63,7 @@ function parse(text) {
         // ---- 字段 -----------------------------------------------------------
         const mField = line.match(reField);
         if (mField) {
-            const [, fname, tagStr, star, vtype, extra] = mField;
+            const [, fname, tagStr, star, vtype, extra, cmt] = mField;
             const cur = stack.at(-1);
             if (!cur) {
                 errors.push({ message: '字段必须放在结构体 / request / response 内', range: [start, end] });
@@ -87,6 +83,7 @@ function parse(text) {
                 else
                     field.key = extra; // map 主键
             }
+            field.comment = cmt === null || cmt === void 0 ? void 0 : cmt.trim();
             cur.children.push(field);
             return;
         }

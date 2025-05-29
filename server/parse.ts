@@ -16,6 +16,8 @@ export interface FieldNode extends Node {
     key?: string
     /** integer(2) 里的 (2) */
     decimal?: string
+    /** 行尾 # 注释文本（不含 #） */
+    comment?: string
 }
 
 export interface ParseResult {
@@ -27,12 +29,11 @@ export interface ParseResult {
 const reType = /^\s*\.(\w[\w\d_.]*)\s*\{$/
 const reRpc = /^\s*(\w[\w\d_]*)\s+(\d+)\s*\{$/
 const reSess = /^\s*(request|response)\s*(\{)?/          // “request {” / “response {”
-/**
- * 字段正则：
- * name tag : *?TypeName (key|decimal)?
- *            └─4──┘  └────5────┘ └6┘
- */
-const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?/
+
+//           ┌──5──┐ ┌───6───┐      ┌─────7 (comment)────┐
+const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?(?:\s*#\s*(.*))?/
+
+
 
 export function parse(text: string): ParseResult {
     const ast: Node[] = []
@@ -94,7 +95,7 @@ export function parse(text: string): ParseResult {
         // ---- 字段 -----------------------------------------------------------
         const mField = line.match(reField)
         if (mField) {
-            const [, fname, tagStr, star, vtype, extra] = mField
+            const [, fname, tagStr, star, vtype, extra, cmt] = mField
             const cur = stack.at(-1)
             if (!cur) {
                 errors.push({ message: '字段必须放在结构体 / request / response 内', range: [start, end] })
@@ -112,6 +113,7 @@ export function parse(text: string): ParseResult {
                 if (vtype === 'integer') field.decimal = extra
                 else field.key = extra  // map 主键
             }
+            field.comment = cmt?.trim()
             cur.children!.push(field)
             return
         }
