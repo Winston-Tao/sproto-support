@@ -4,3 +4,4 @@ dist
 /dist
 /dist
 *.sproto
+/node_modules
