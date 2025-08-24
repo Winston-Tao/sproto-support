@@ -12,7 +12,9 @@ function fmtFields(fields: FieldNode[], baseIndent = 2): string {
     const maxTag = Math.max(...fields.map(f => String(f.tag).length))
 
     return fields.map(f => {
-        const typeStr = f.isArray ? `*${f.valueType}` : f.valueType
+        // 使用 originalType 保持完整的类型信息，包括 | 分隔符
+        const fullType = f.originalType || f.valueType
+        const typeStr = f.isArray ? `*${fullType}` : fullType
         let extra = ''
         if (f.key) extra = `(${f.key})`
         if (f.decimal) extra = `(${f.decimal})`

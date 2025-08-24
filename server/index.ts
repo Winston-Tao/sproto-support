@@ -24,6 +24,9 @@ const documents = new TextDocuments<TextDocument>(TextDocument);
 interface Cache { res: ParseResult; version: number; }
 const cache = new Map<string, Cache>();
 
+// -------------- 全局符号表 -----------------
+const globalSymbols = new Map<string, { uri: string; range: [number, number] }>();
+
 function getParse(doc: TextDocument): ParseResult {
     const c = cache.get(doc.uri);
     if (c && c.version === doc.version) return c.res;
@@ -48,7 +51,15 @@ connection.onInitialize(() => {
 
 // -------------- 诊断 ---------------------
 documents.onDidChangeContent(({ document }) => {
-    const { errors } = getParse(document);
+    const { errors, symbols } = getParse(document);
+    
+    // 更新全局符号表
+    symbols.forEach((node, name) => {
+        if (node.kind === 'type' || node.kind === 'rpc') {
+            globalSymbols.set(name, { uri: document.uri, range: node.range });
+        }
+    });
+    
     connection.sendDiagnostics({
         uri: document.uri,
         diagnostics: errors.map(e => ({
@@ -69,6 +80,8 @@ connection.onDefinition((params: DefinitionParams): Location | null => {
 
     const { ast, symbols } = getParse(doc);
     const id = findIdentifier(ast, off);
+    
+    // 1. 首先在当前文档中查找
     if (id) {
         const def = symbols.get(id.name);
         if (def) {
@@ -78,10 +91,28 @@ connection.onDefinition((params: DefinitionParams): Location | null => {
 
     // ⇣⇣⇣ ① 如果前面没找到节点，再做词法级回退 ⇣⇣⇣
     const word = getWordAt(doc.getText(), off);
+    
+    // 2. 在当前文档的词法级回退
     if (word && symbols.has(word)) {
         const def = symbols.get(word)!;
         return toLoc(doc, def.range);
     }
+    
+    // 3. 在全局符号表中查找（跨文件支持）
+    if (word && globalSymbols.has(word)) {
+        const def = globalSymbols.get(word)!;
+        const targetDoc = documents.get(def.uri);
+        if (targetDoc) {
+            return {
+                uri: def.uri,
+                range: {
+                    start: targetDoc.positionAt(def.range[0]),
+                    end: targetDoc.positionAt(def.range[1])
+                }
+            };
+        }
+    }
+    
     return null;
 });
 
@@ -145,6 +176,17 @@ function findIdentifier(nodes: Node[], off: number): Node | undefined {
 }
 
 
+
+// 文档关闭时清理全局符号表
+documents.onDidClose(({ document }) => {
+    // 移除该文档中的所有符号
+    const { symbols } = getParse(document);
+    symbols.forEach((node, name) => {
+        if (globalSymbols.get(name)?.uri === document.uri) {
+            globalSymbols.delete(name);
+        }
+    });
+});
 
 documents.listen(connection);
 connection.listen();

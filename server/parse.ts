@@ -11,6 +11,7 @@ export interface Node {
 export interface FieldNode extends Node {
     kind: 'field'
     valueType: string            // integer / SceneInfo / ...
+    originalType: string         // 完整类型信息，包括 | 分隔符等
     isArray: boolean             // 是否带 * 号
     /** map 主键，如 (id) */
     key?: string
@@ -31,7 +32,7 @@ const reRpc = /^\s*(\w[\w\d_]*)\s+(\d+)\s*\{$/
 const reSess = /^\s*(request|response)\s*(\{)?/          // “request {” / “response {”
 
 //           ┌──5──┐ ┌───6───┐      ┌─────7 (comment)────┐
-const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)(\w[\w\d_.]*)(?:\s*\(\s*([^\)]*)\s*\))?(?:\s*#\s*(.*))?/
+const reField = /^\s*(\w[\w\d_]*)\s+(\d+)\s*:\s*(\*?)([\w\d_.|\s]+)(?:\s*\(\s*([^\)]*)\s*\))?(?:\s*#\s*(.*))?/
 
 
 
@@ -95,22 +96,27 @@ export function parse(text: string): ParseResult {
         // ---- 字段 -----------------------------------------------------------
         const mField = line.match(reField)
         if (mField) {
-            const [, fname, tagStr, star, vtype, extra, cmt] = mField
+            const [, fname, tagStr, star, fullType, extra, cmt] = mField
             const cur = stack.at(-1)
             if (!cur) {
                 errors.push({ message: '字段必须放在结构体 / request / response 内', range: [start, end] })
                 return
             }
+            // 提取基础类型（第一个类型）用于符号查找
+            const baseType = fullType.split('|')[0].trim()
+            // 清理原始类型中的多余空格，但保留 | 分隔符结构
+            const cleanOriginalType = fullType.split('|').map(t => t.trim()).join('|')
             const field: FieldNode = {
                 kind: 'field',
                 name: fname,
                 tag: +tagStr,
-                valueType: vtype,
+                valueType: baseType,
+                originalType: cleanOriginalType,
                 isArray: star === '*',
                 range: [start, end],
             }
             if (extra !== undefined) {
-                if (vtype === 'integer') field.decimal = extra
+                if (baseType === 'integer') field.decimal = extra
                 else field.key = extra  // map 主键
             }
             field.comment = cmt?.trim()
